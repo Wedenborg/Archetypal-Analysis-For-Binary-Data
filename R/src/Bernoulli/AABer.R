@@ -190,7 +190,7 @@ CUpdate <- function(X, P, C, S, PC, n_arc, PPP) {
 
 
 # ClosedFormArchetypalAnalysis function
-ClosedFormArchetypalAnalysis <- function(X, n_arc, method, maxIter = 500, convCriteria = 1e-6, C = NULL, S = NULL, init = FALSE) {
+ClosedFormArchetypalAnalysis <- function(X, n_arc, maxIter = 500, convCriteria = 1e-6, C = NULL, S = NULL, init = FALSE) {
   eps <- 1e-3
   n_features <- nrow(X)
   n_samples <- ncol(X)
