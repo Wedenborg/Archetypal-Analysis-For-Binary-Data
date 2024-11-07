@@ -1,23 +1,24 @@
 # Load the necessary packages and functions
 library(parallel)
+library(foreach)
+library(doParallel)
 source("R/read_and_process_data.R")
 
 # Define the file path and read and process the data
 file_path <- "files/drug_side_effects.csv"
 dataX <- read_and_process_data(file_path)
 X <- t(dataX)
-X <- X[rowSums(X != 0) >= 20, ]
-X <- X[, colSums(X != 0) >= 20]
+X <- X[rowSums(X != 0) >= 40, ]
+X <- X[, colSums(X != 0) >= 40]
 
 # Define the range of n_arc values and the number of repetitions
 n_arc_values <- c(2, 3)
 n_reps <- 2
 
-# Define the number of cores to use for parallel processing
-num_cores <- detectCores() - 1
+cores=detectCores()
+cl <- makeCluster(cores[1]-1) #not to overload your computer
+registerDoParallel(cl)
 
-# Create a cluster with the specified number of cores
-cl <- makeCluster(num_cores)
 
 # Define a function to run the parallel loop
 parallel_loop <- function(n_arc, n_reps) {
