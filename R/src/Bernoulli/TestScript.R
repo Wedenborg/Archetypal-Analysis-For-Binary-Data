@@ -36,12 +36,13 @@ X <- as.data.frame(X)
 
 # Keep the column names
 col_names <- colnames(X)
-row_names <- X[,1]
-col_names <- col_names[col_names != "drug_name"]
-fake_ages <- sample(18:65, nrow(X), replace = TRUE)
-fake_genders <- sample(c("Male", "Female"), nrow(X), replace = TRUE)
-X$AGE <- fake_ages
-X$GENDER <- fake_genders
+row_names <- X[,1] ### MÅSKE Denne her alt efter hvad row_names er??
+#col_names <- col_names[col_names != "drug_name"]
+#fake_ages <- sample(18:65, nrow(X), replace = TRUE)
+#fake_genders <- sample(c("Male", "Female"), nrow(X), replace = TRUE)
+#X$AGE <- fake_ages
+#X$GENDER <- fake_genders
+
 
 age_gender_df <- X %>% select(AGE, GENDER)
 rownames(age_gender_df) <- row_names
@@ -49,10 +50,10 @@ X <- X %>% dplyr::select(-c(AGE,GENDER))
 
 relevant_features <- apply(X, 2, function(col) row_names[col == 1])
 
-X <- t(X[, -1])
+X <- t(X[, -1]) ## Vær lige obs på -1 her. Dette kommer an på hvordan dataen ser ud.
 
 
-X <- apply(X, c(1, 2), as.numeric)
+X <- apply(X, c(1, 2), as.numeric) ## Tror dette er så den er numerisk og ikke T/F
 
 
 # Assign the column names back to the matrix
@@ -93,7 +94,7 @@ for (n_arc in n_arc_values) {
     json_file <- paste0("AA_results/hex_data_", n_arc, "_", n, ".json")
     write_json(hex_data, json_file)
     ### OBS: large_da må kun returneres som plots og skal slettes til sidst (eller laves til bins - somehow)
-    large_df <- calculate_manhattan_distances(X, res$Z, col_names)
+    large_df <- calculate_manhattan_distances(t(X), res$Z, col_names)
     file_name <-  paste0("AA_results/distances", n_arc, "_", n, ".csv")
     write.csv(large_df, file_name, row.names=FALSE, quote=FALSE)
   }
@@ -101,8 +102,6 @@ for (n_arc in n_arc_values) {
   pairs <- combn(1:n_arc, 2)
   idx1 <- pairs[1,]
   idx2 <- pairs[2,]
-
-######################## OBS: Hvordan får jeg gemt ting på den rigtige måde, så jeg kan regne stabilitet af løsning?
   for (i in seq_along(idx1)) {
     NMI[j,i] <- calcNMI(S_list[[idx1[i]]],S_list[[idx2[i]]])
   }

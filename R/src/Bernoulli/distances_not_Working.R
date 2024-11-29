@@ -21,8 +21,6 @@ calculate_manhattan_distances <- function(X, Z, col_names,age_gender_df) {
     return(dist)
   }
   
-  X <- Xt
-  
   # Get the list of all targets
   targets <- col_names
   
@@ -112,5 +110,5 @@ calculate_manhattan_distances <- function(X, Z, col_names,age_gender_df) {
 
 # Example usage:
 # Assuming X, Z, and col_names are already defined
- large_df <- calculate_manhattan_distances(X, Z, col_names,age_gender_df)
+# large_df <- calculate_manhattan_distances(X, Z, col_names,age_gender_df)
 # print(large_df)
