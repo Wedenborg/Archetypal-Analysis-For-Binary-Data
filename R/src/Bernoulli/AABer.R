@@ -34,8 +34,8 @@ fastnnls <- function(X, Xty, tol, b, PP, device = "cpu") {
   iterOuter <- 0
 
   scale <- mean(colSums(X * X))
-  lambda1 <- 1e9 * scale
-  lambda2 <- 1e-4 * scale
+  lambda1 <- 1e8 * scale
+  lambda2 <- 1e-3 * scale
   #t <- X[, PP] %*% x[PP]
   w <- Xty + lambda1 - t(X) %*% t - sum(x) * lambda1 - lambda2 * x
   iter <- 0
@@ -247,5 +247,5 @@ ClosedFormArchetypalAnalysis <- function(X, n_arc, maxIter = 500, convCriteria =
     iter <- iter + 1
   }
 
-  return(list(C = C, S = S, L = L))
+  return(list(Z = X%*%C, S = S, L = L))
 }

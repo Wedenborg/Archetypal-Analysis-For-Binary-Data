@@ -3,7 +3,7 @@ read_and_process_data <- function(file_path) {
   data <- read.csv(file_path, header = TRUE, sep = ",", row.names = NULL)
 
   # Convert the data to a matrix and exclude the first column
-  data_matrix <- as.matrix(data[, -1])
+  data_matrix <- as.matrix(data)
 
 
   return(data_matrix)
