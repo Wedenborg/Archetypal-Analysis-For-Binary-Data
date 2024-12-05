@@ -21,16 +21,16 @@ source("create_hex_data.R")
 source("distances_not_Working.R")
 
 # Define the file path and read and process the data
-file_path <- "../files/drug_side_effects.csv"
+#file_path <- "../files/drug_side_effects.csv"
 
 # Read and process the data
-dataX <- read_and_process_data(file_path)
+#dataX <- read_and_process_data(file_path)
 
 
 
 # Filter the matrix
-X <- dataX[rowSums(dataX != 0) >= 50, ]
-X <- X[, colSums(dataX != 0) >= 50]
+#X <- dataX[rowSums(dataX != 0) >= 50, ]
+#X <- X[, colSums(dataX != 0) >= 50]
 
 X <- as.data.frame(X)
 
