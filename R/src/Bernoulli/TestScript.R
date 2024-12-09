@@ -19,29 +19,36 @@ source("AABer.R")
 source("NMI.R")
 source("create_hex_data.R")
 source("distances_not_Working.R")
+source("calculate_contingency_tables.R")
 
 # Define the file path and read and process the data
-#file_path <- "../files/drug_side_effects.csv"
+file_path <- "../files/drug_side_effects.csv"
 
 # Read and process the data
-#dataX <- read_and_process_data(file_path)
+dataX <- read_and_process_data(file_path)
 
 
 
 # Filter the matrix
-#X <- dataX[rowSums(dataX != 0) >= 50, ]
-#X <- X[, colSums(dataX != 0) >= 50]
+X <- dataX[rowSums(dataX != 0) >= 50, ]
+X <- X[, colSums(dataX != 0) >= 50]
+
+
 
 X <- as.data.frame(X)
+
+X <- X[1:100,1:150 ]
 
 # Keep the column names
 col_names <- colnames(X)
 row_names <- X[,1] ### MÅSKE Denne her alt efter hvad row_names er??
-#col_names <- col_names[col_names != "drug_name"]
-#fake_ages <- sample(18:65, nrow(X), replace = TRUE)
-#fake_genders <- sample(c("Male", "Female"), nrow(X), replace = TRUE)
-#X$AGE <- fake_ages
-#X$GENDER <- fake_genders
+
+
+col_names <- col_names[col_names != "drug_name"]
+fake_ages <- sample(18:65, nrow(X), replace = TRUE)
+fake_genders <- sample(c("Male", "Female"), nrow(X), replace = TRUE)
+X$AGE <- fake_ages
+X$GENDER <- fake_genders
 
 
 age_gender_df <- X %>% select(AGE, GENDER)
@@ -64,10 +71,12 @@ relevant_features <- apply(X, 2, function(col) col_names[col == 1])
 Xt <- t(X)
 
 # Define the range of n_arc values and the number of repetitions
-n_arc_values <- c(5,10,15,20,25,30,35,40,45,50)
-n_reps <- c(1,2,3,4,5,6,7,8,9,10)
-NMI <- list()
-
+#n_arc_values <- c(5,10,15,20,25,30,35,40,45,50)
+n_arc_values <- c(2,3,4)
+#n_reps <- c(1,2,3,4,5,6,7,8,9,10)
+n_reps = c(1,2,3)
+pairs <- combn(1:max(n_reps), 2)
+NMI <- matrix(ncol = length(n_arc_values), nrow = dim(pairs)[2])
 ## AA
 dir.create('AA_results', showWarnings = FALSE)
 
@@ -76,8 +85,6 @@ S_list <- list()
 for (n_arc in n_arc_values) {
   for (n in n_reps){
     res <- ClosedFormArchetypalAnalysis(X, n_arc)
-    print(n_arc)
-    print(n)
     # Create a list to store the output for this iteration
     output_list <- list(
       n_arc = n_arc,
@@ -86,20 +93,22 @@ for (n_arc in n_arc_values) {
     )
     S_list[[n]]<- res$S
     # Write the output list to a JSON file
-    ### OBS: S skal ikke gemmes i .json
+    ## OBS: S skal ikke gemmes i .json
     json_file <- paste0("AA_results/output_", n_arc, "_", n, ".json")
     write_json(output_list, json_file)
-
     hex_data <- create_hex_data(X, res$S,res$Z,age_gender_df, relevant_features, num_bins = 30, selected_feature = NULL)
     json_file <- paste0("AA_results/hex_data_", n_arc, "_", n, ".json")
     write_json(hex_data, json_file)
-    ### OBS: large_da må kun returneres som plots og skal slettes til sidst (eller laves til bins - somehow)
-    large_df <- calculate_manhattan_distances(t(X), res$Z, col_names)
-    file_name <-  paste0("AA_results/distances", n_arc, "_", n, ".csv")
-    write.csv(large_df, file_name, row.names=FALSE, quote=FALSE)
+
+    ## OBS: large_da må kun returneres som plots og skal slettes til sidst (eller laves til bins - somehow)
+    large_df <- calculate_manhattan_distances(Xt, res$Z, col_names,age_gender_df)
+    for (name in names(large_df)) {
+      file_name <-  paste0("AA_results/distances_",name,"_" ,n_arc, "_", n, ".csv")
+      write.csv(large_df[[name]], file_name, row.names = FALSE,quote=FALSE)
+    }
   }
   ## Calc NMI HERE (return NMI)
-  pairs <- combn(1:n_arc, 2)
+
   idx1 <- pairs[1,]
   idx2 <- pairs[2,]
   for (i in seq_along(idx1)) {
@@ -109,8 +118,8 @@ for (n_arc in n_arc_values) {
   j <- j+1
 
 }
-json_file <- paste0("AA_results/NMI.json")
-write_json(NMI, json_file)
+file_name <- paste0("AA_results/NMI.csv")
+write.csv(NMI, file_name)
 
 
 dir.create('LDA_results', showWarnings = FALSE)
@@ -123,8 +132,9 @@ length_n_reps <- length(n_reps)
 LL_LDA <- matrix(nrow = length_n_arc_list, ncol = length_n_reps)
 for (n_arc in n_arc_values) {
   for (n in n_reps){
+    print('LDA')
 
-    lda_model <- LDA(t(X), n_arc, method = "Gibbs")
+    lda_model <- LDA(Xt, n_arc, method = "Gibbs")
 
     gamma <- lda_model@gamma
     dbscan_gamma <- hdbscan(gamma,  minPts = 10)
@@ -135,10 +145,12 @@ for (n_arc in n_arc_values) {
     umap_dbscan_gamma_proj <- bind_cols(umap_dbscan_gamma_proj, age_gender_df)
     umap_dbscan_gamma_proj$features <- I(relevant_features)
 
+
     hex_data <- create_hex_data_universal(umap_dbscan_gamma_proj, 30, "V1", "V2", "AGE", "GENDER", "cluster", "features")
 
     json_file <- paste0("LDA_results/hex_data_", n_arc, "_", n, ".json")
     write_json(hex_data, json_file)
+
 
     #ggplot(hex_data, aes(x = x_bin, y = y_bin, fill = most_common_cluster)) +
     #  geom_hex()
@@ -166,22 +178,21 @@ for (n_arc in n_arc_values) {
 
     ####### OBS HER: SKAL RETTES OG KOPIERES! (noget med ends_with "Before"/"After"/"Treatment")
 
-    cluster_charB <- cluster_analysis(umap_dbscan_gamma_proj, X, "AGE", "GENDER","cluster" ,"DxB") ## Set to before
+    cluster_charB <- cluster_analysis(umap_dbscan_gamma_proj, Xt, "AGE", "GENDER","cluster" ,"DxB") ## Set to before
     cluster_charB <- cluster_charB %>%
       mutate(across(where(is.list), ~ purrr::map(.x, as.list)))
 
     file_name <-  paste0("LDA_results/cluster_char_Before", n_arc, "_", n, ".json")
     write_json(cluster_charB, file_name)
 
-
-    cluster_charA <- cluster_analysis(umap_dbscan_gamma_proj, X, "AGE", "GENDER","cluster" ,"DxA") ## Set to after
+    cluster_charA <- cluster_analysis(umap_dbscan_gamma_proj, Xt, "AGE", "GENDER","cluster" ,"DxA") ## Set to after
     cluster_charA <- cluster_charA %>%
       mutate(across(where(is.list), ~ purrr::map(.x, as.list)))
 
     file_name <-  paste0("LDA_results/cluster_char_After", n_arc, "_", n, ".csv")
     write.csv(cluster_charA, file_name, row.names=FALSE, quote=FALSE)
 
-    cluster_charT <- cluster_analysis(umap_dbscan_gamma_proj, X, "AGE", "GENDER","cluster", "TrA") ## Set to Treatment
+    cluster_charT <- cluster_analysis(umap_dbscan_gamma_proj, Xt, "AGE", "GENDER","cluster", "TrA") ## Set to Treatment
     cluster_charT <- cluster_charT %>%
       mutate(across(where(is.list), ~ purrr::map(.x, as.list)))
 
@@ -190,13 +201,14 @@ for (n_arc in n_arc_values) {
 
     #######
 
+
     LL_LDA[i,n] <- lda_model@loglikelihood
     # Get the word distributions for each topic
     word_distributions <- as.data.frame(lda_model@beta)
     #word_distributions<-10^t(lda_model@beta)
 
 
-    frex_score <- calcfrex(lda_model@beta,wordcounts = colSums(X))
+    frex_score <- calcfrex(lda_model@beta,wordcounts = colSums(Xt))
     rownames(frex_score) <- rownames(X)
     file_name <-  paste0("LDA_results/frex_score", n_arc, "_", n, ".csv")
     write.csv(frex_score, file_name, row.names=FALSE, quote=FALSE)
@@ -231,8 +243,10 @@ for (n_arc in n_arc_values) {
 
 ## UMAP + HDBScan
 
+print('UMAP')
+
 dir.create('HDBScan_results', showWarnings = FALSE)
-results <- calculate_contingency_tables(Xt, eps = 0.5, minPts = 15, n_neighbors = 15, n_components = 2)
+results <- calculate_contingency_tables(Xt, eps = 0.5, minPts = 5, n_neighbors = 2, n_components = 2)
 
 json_file <- paste0("HDBScan_results/hdbscan_Contingency", n_arc, "_", n, ".json") ## OBS: Testing ranges?
 write_json(results[[1]], json_file)
@@ -252,12 +266,6 @@ write_json(results[[5]], json_file)
 
 json_file <- paste0("HDBScan_results/hdbscan_cluster_char_Age_bins", n_arc, "_", n, ".json")
 write_json(results[[6]], json_file)
-
-
-
-
-
-
 
 
 
@@ -342,8 +350,7 @@ dbscan_results <- list(
   chi_square_result = chi_square_result
 )
 
-# Print the results
-print(dbscan_results)
+
 #############################################
 #SBM
 

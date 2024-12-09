@@ -1,13 +1,14 @@
 # Load necessary packages
 library(dplyr)
 library(tidyr)
+library(archetypes)
 
 # Define the function
 create_hex_data <- function(X, S, Z,age_gender_df, relevant_features, num_bins = 30, selected_feature = NULL) {
 
 
 
-  params <- t(z)  #z
+  params <- t(Z)  #z
   coefs <- t(S) # t(ae) #alphas
 
   order = NULL
@@ -29,11 +30,9 @@ create_hex_data <- function(X, S, Z,age_gender_df, relevant_features, num_bins =
 
   object=c()
   object$alphas = coefs
-
+  radius <- 10
   proj_z <- projection(params, r = radius - 1)
 
-  print(dim(proj_z))
-  print(dim(coefs))
   proj_h <- coefs %*% proj_z
 
   # Extract the relevant feature names for each sample
@@ -65,15 +64,17 @@ create_hex_data <- function(X, S, Z,age_gender_df, relevant_features, num_bins =
       features = list(unlist(features)),
       x = first(x_center),
       y = first(y_center),
-      gender_counts = list(table(GENDER)),  # Count each GENDER in the bin
+      gender_max = names(which.max(table(GENDER))),  # Count each GENDER in the bin
       mean_age = round(mean(AGE, na.rm = TRUE),0),  # Mean age in the bin
       sd_age = sd(AGE, na.rm = TRUE)  # Standard deviation of age in the bin
     ) %>%
     ungroup()
 
+
   ## manually force entries with less than 5 to be 5 and set sd to 0.
   hex_data$sd_age[hex_data$count<5] = 0
   hex_data$count[hex_data$count<5] = 5
+
 
   # Dynamically create columns for each feature
   features <- unique(unlist(hex_data$features))
@@ -82,14 +83,15 @@ create_hex_data <- function(X, S, Z,age_gender_df, relevant_features, num_bins =
       mutate(!!paste0("feature_", feature, "_count") := sapply(features, function(f) sum(f == feature)))
   }
 
+
   # Select a specific feature to visualize if not provided
-  if (is.null(selected_feature)) {
-    selected_feature <- feature_names[1]
-  }
+  #if (is.null(selected_feature)) {
+  #  selected_feature <- feature_names[1]
+  #}
 
   # Create a binary indicator for the presence of the selected feature
-  hex_data <- hex_data %>%
-    mutate(feature_present = sapply(features, function(f) any(f == selected_feature)))
+  #hex_data <- hex_data %>%
+  #  mutate(feature_present = sapply(features, function(f) any(f == selected_feature)))
 
   return(hex_data)
 }

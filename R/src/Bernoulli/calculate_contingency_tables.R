@@ -17,14 +17,13 @@ calculate_contingency_tables <- function(X, eps = 0.5, minPts = 5, n_neighbors =
   library(dplyr)
   source("utils.R")
   # Apply UMAP
-  umap_result <- umap(t(X), n_neighbors = n_neighbors, n_components = n_components, metric = "manhattan")
+  umap_result <- umap(X, n_neighbors = n_neighbors, n_components = n_components, metric = "manhattan")
   # Save the cluster labels
 
 
 
   # Apply DBSCAN to the UMAP-reduced data
   dbscan_result <- hdbscan(umap_result$layout,  minPts = minPts)
-
   cluster_labels <- dbscan_result$cluster
   umap_df <- as.data.frame(umap_result$layout)
   umap_df <- bind_cols(umap_df, age_gender_df)
@@ -36,15 +35,15 @@ calculate_contingency_tables <- function(X, eps = 0.5, minPts = 5, n_neighbors =
   umap_df$features <- I(relevant_features)  # Use I() to prevent coercion to factor
   hex_data <- create_hex_data_universal(umap_df, 30, "V1", "V2", "AGE", "GENDER", "cluster_labels", "features")
 
-  cluster_charB <- cluster_analysis(umap_df, t(X), "AGE", "GENDER", "cluster_labels","DxB") ## Set to before
+  cluster_charB <- cluster_analysis(umap_df, X, "AGE", "GENDER", "cluster_labels","DxB") ## Set to before
   cluster_charB <- cluster_charB %>%
     mutate(across(where(is.list), ~ purrr::map(.x, as.list)))
 
-  cluster_charA <- cluster_analysis(umap_df, t(X), "AGE", "GENDER", "cluster_labels","DxA") ## Set to After
+  cluster_charA <- cluster_analysis(umap_df, X, "AGE", "GENDER", "cluster_labels","DxA") ## Set to After
   cluster_charA <- cluster_charA %>%
     mutate(across(where(is.list), ~ purrr::map(.x, as.list)))
 
-  cluster_charT <- cluster_analysis(umap_df, t(X), "AGE", "GENDER", "cluster_labels","TrA") ## Set to Treatment
+  cluster_charT <- cluster_analysis(umap_df, X, "AGE", "GENDER", "cluster_labels","TrA") ## Set to Treatment
   cluster_charT <- cluster_charT %>%
     mutate(across(where(is.list), ~ purrr::map(.x, as.list)))
 
@@ -69,6 +68,7 @@ calculate_contingency_tables <- function(X, eps = 0.5, minPts = 5, n_neighbors =
   # Loop through each cluster
   for (cluster in unique_clusters) {
     # Extract the data for the current cluster
+
     cluster_data <- X[cluster_labels == cluster, ]
 
     # Get the number of features
@@ -103,6 +103,7 @@ calculate_contingency_tables <- function(X, eps = 0.5, minPts = 5, n_neighbors =
     # Set the row and column names for better readability
     rownames(contingency_table) <- colnames(cluster_data)
     colnames(contingency_table) <- colnames(cluster_data)
+
 
     # Save the contingency table
     contingency_tables[[as.character(cluster)]] <- contingency_table

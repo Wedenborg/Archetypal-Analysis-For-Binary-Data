@@ -74,9 +74,8 @@ cluster_analysis <- function(cluster_data, X, age_col, gender_col, cluster_col, 
     summarise(
       mean_age = mean(!!sym(age_col), na.rm = TRUE),
       age_sd = sd(!!sym(age_col), na.rm = TRUE),
-      gender_distribution = list(table(!!sym(gender_col)))
+      gender_max = names(which.max(table(!!sym(gender_col))))
     )
-
   # Merge X with cluster assignments
   X_cluster_df <- cbind(X, cluster = cluster_data[[cluster_col]])
   X_cluster_df <- as.data.frame(X_cluster_df)
@@ -125,7 +124,7 @@ create_hex_data_universal <- function(cluster_data, num_bins, x_col, y_col, age_
       features = list(unlist(!!sym(features_col))),
       x = first(x_center),
       y = first(y_center),
-      gender_counts = list(table(!!sym(gender_col))),  # Count each GENDER in the bin
+      gender_max = names(which.max(table(!!sym(gender_col)))),  # Count each GENDER in the bin
       mean_age = round(mean(!!sym(age_col), na.rm = TRUE), 0),  # Mean age in the bin
       sd_age = sd(!!sym(age_col), na.rm = TRUE),  # Standard deviation of age in the bin
       most_common_cluster = names(sort(table(!!sym(cluster_col)), decreasing = TRUE))[1]  # Most common cluster in the bin
