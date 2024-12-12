@@ -1,3 +1,10 @@
+library(umap)
+library(dbscan)
+library(reshape2)
+library(ggplot2)
+library(viridis)
+library(dplyr)
+
 calculate_contingency_tables <- function(X, eps = 0.5, minPts = 5, n_neighbors = 2, n_components = 2) {
   # Install and load necessary packages
   if (!requireNamespace("umap", quietly = TRUE)) {
@@ -9,13 +16,8 @@ calculate_contingency_tables <- function(X, eps = 0.5, minPts = 5, n_neighbors =
   if (!requireNamespace("reshape2", quietly = TRUE)) {
     install.packages("reshape2")
   }
-  library(umap)
-  library(dbscan)
-  library(reshape2)
-  library(ggplot2)
-  library(viridis)
-  library(dplyr)
-  source("utils.R")
+
+
   # Apply UMAP
   umap_result <- umap(X, n_neighbors = n_neighbors, n_components = n_components, metric = "manhattan")
   # Save the cluster labels
