@@ -45,7 +45,9 @@ create_clustering_results <- function(cdm,source_file_path,output_path){
   output_path_AA <- file.path(output_path,"Archetypal")
   dir.create(output_path_AA,showWarnings = FALSE)
     
-  # Define the range of n_arc values and the number of repetitions
+  # Define the range of n_arc values and the number of repetitions NB: XX! Remember to include more arcs and reps! 
+  #n_arc_values <- c(5,10,15,20,25,30,35,40,45,50)
+  #n_reps <- c(1,2,3,4,5,6,7,8,9,10)
   n_arc_values <- c(2,3,4)
   n_reps <- c(1:10)
   
