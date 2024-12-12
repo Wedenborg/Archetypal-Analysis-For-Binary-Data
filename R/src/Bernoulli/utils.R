@@ -64,6 +64,8 @@ create_dynamic_bins <- function(ages, min_size = 5, max_size = 10) {
 }
 
 
+
+
 # Function calculate age and gender distribution for each cluster
 cluster_analysis <- function(cluster_data, X, age_col, gender_col, cluster_col, diagnosis_prefix) {
   # Calculate age and gender distribution for each cluster
@@ -133,11 +135,11 @@ create_hex_data_universal <- function(cluster_data, num_bins, x_col, y_col, age_
       x = first(x_center),
       y = first(y_center),
       gender_max = names(which.max(table(!!sym(gender_col)))),  # Count each GENDER in the bin
-      cohort_max = names(which.max(table(TARGET_COHORT))),
       mean_age = round(mean(!!sym(age_col), na.rm = TRUE), 0),  # Mean age in the bin
       sd_age = sd(!!sym(age_col), na.rm = TRUE),  # Standard deviation of age in the bin
-      most_common_cluster = names(sort(table(!!sym(cluster_col)), decreasing = TRUE))[1],  # Most common cluster in the bin
-      .groups = 'drop')
+      most_common_cluster = names(sort(table(!!sym(cluster_col)), decreasing = TRUE))[1]  # Most common cluster in the bin
+    ) %>%
+    ungroup()
 
   # Dynamically create columns for each feature
   features <- unique(unlist(hex_data$features))
