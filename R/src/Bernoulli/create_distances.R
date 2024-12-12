@@ -114,6 +114,7 @@ calculate_manhattan_distances <- function(X, Z, col_names,age_gender_df) {
 
 aggregate_distances <- function(data){
 
+  
   # Define age bins and labels
   testing <- data %>%
     mutate(age_group = case_when(
@@ -123,6 +124,8 @@ aggregate_distances <- function(data){
     ))
 
 
+  
+  
   # Aggregate data by gender and age group
   aggregated_data <- testing %>%
     group_by(target,GENDER, age_group,TARGET_COHORT) %>%
@@ -130,5 +133,5 @@ aggregate_distances <- function(data){
               .groups = 'drop')
 
   return(as.data.frame(aggregated_data))
-
+  
 }
