@@ -64,8 +64,6 @@ create_dynamic_bins <- function(ages, min_size = 5, max_size = 10) {
 }
 
 
-
-
 # Function calculate age and gender distribution for each cluster
 cluster_analysis <- function(cluster_data, X, age_col, gender_col, cluster_col, diagnosis_prefix) {
   # Calculate age and gender distribution for each cluster
@@ -81,7 +79,7 @@ cluster_analysis <- function(cluster_data, X, age_col, gender_col, cluster_col, 
     )
 
   ## manually force entries with less than 5 to be 5 and set sd to 0.
-  cluster_summary$sd_age[cluster_summary$count<5] = 0
+  cluster_summary$age_sd[cluster_summary$count<5] = 0
   cluster_summary$count[cluster_summary$count<5] = 5
 
 
@@ -90,13 +88,18 @@ cluster_analysis <- function(cluster_data, X, age_col, gender_col, cluster_col, 
   X_cluster_df <- as.data.frame(X_cluster_df)
 
   # Calculate the number of patients with each diagnosis in each cluster
+  #diagnosis_counts <- X_cluster_df %>%
+  #  group_by(cluster) %>%
+  #  summarise(across(starts_with(diagnosis_prefix), ~sum(. == 1, na.rm = TRUE)),
+  #            .groups = 'drop')
+
   diagnosis_counts <- X_cluster_df %>%
     group_by(cluster) %>%
-    summarise(across(starts_with(diagnosis_prefix), ~sum(. == 1, na.rm = TRUE)),
-              .groups = 'drop')
+    summarise(across(starts_with(diagnosis_prefix), ~sum(. == 1, na.rm = TRUE)))
+
 
   # Calculate the total number of patients with each diagnosis across all clusters
-  total_diagnosis_counts <- colSums(X)
+  total_diagnosis_counts <- colSums(X_cluster_df)
 
   ## Normalize the diagnosis counts to get probabilities
   #diagnosis_probability <- diagnosis_counts %>%
@@ -110,8 +113,6 @@ cluster_analysis <- function(cluster_data, X, age_col, gender_col, cluster_col, 
 
 # Example usage:
 # cluster_char <- cluster_analysis(cluster_data, X, "AGE", "GENDER",""cluster, "C0")
-
-
 
 
 create_hex_data_universal <- function(cluster_data, num_bins, x_col, y_col, age_col, gender_col, cluster_col, features_col) {
@@ -135,11 +136,11 @@ create_hex_data_universal <- function(cluster_data, num_bins, x_col, y_col, age_
       x = first(x_center),
       y = first(y_center),
       gender_max = names(which.max(table(!!sym(gender_col)))),  # Count each GENDER in the bin
+      cohort_max = names(which.max(table(TARGET_COHORT))),
       mean_age = round(mean(!!sym(age_col), na.rm = TRUE), 0),  # Mean age in the bin
       sd_age = sd(!!sym(age_col), na.rm = TRUE),  # Standard deviation of age in the bin
-      most_common_cluster = names(sort(table(!!sym(cluster_col)), decreasing = TRUE))[1]  # Most common cluster in the bin
-    ) %>%
-    ungroup()
+      most_common_cluster = names(sort(table(!!sym(cluster_col)), decreasing = TRUE))[1],  # Most common cluster in the bin
+      .groups = 'drop')
 
   # Dynamically create columns for each feature
   features <- unique(unlist(hex_data$features))
