@@ -33,11 +33,9 @@ dataX <- read_and_process_data(file_path)
 X <- dataX[rowSums(dataX != 0) >= 50, ]
 X <- X[, colSums(dataX != 0) >= 50]
 
-
-
 X <- as.data.frame(X)
 
-X <- X[1:100,1:150 ]
+X <- X[1:400,1:500 ]
 
 # Keep the column names
 col_names <- colnames(X)
@@ -47,13 +45,15 @@ row_names <- X[,1] ### MÅSKE Denne her alt efter hvad row_names er??
 col_names <- col_names[col_names != "drug_name"]
 fake_ages <- sample(18:65, nrow(X), replace = TRUE)
 fake_genders <- sample(c("Male", "Female"), nrow(X), replace = TRUE)
+fake_target <- sample(c("CH", "MI"), nrow(X), replace = TRUE)
 X$AGE <- fake_ages
 X$GENDER <- fake_genders
+X$TARGET_COHORT <- fake_target
 
 
-age_gender_df <- X %>% select(AGE, GENDER)
+age_gender_df <- X %>% select(AGE, GENDER,TARGET_COHORT)
 rownames(age_gender_df) <- row_names
-X <- X %>% dplyr::select(-c(AGE,GENDER))
+X <- X %>% dplyr::select(-c(AGE,GENDER,TARGET_COHORT))
 
 relevant_features <- apply(X, 2, function(col) row_names[col == 1])
 
@@ -100,12 +100,15 @@ for (n_arc in n_arc_values) {
     json_file <- paste0("AA_results/hex_data_", n_arc, "_", n, ".json")
     write_json(hex_data, json_file)
 
-    ## OBS: large_da må kun returneres som plots og skal slettes til sidst (eller laves til bins - somehow)
     large_df <- calculate_manhattan_distances(Xt, res$Z, col_names,age_gender_df)
-    for (name in names(large_df)) {
-      file_name <-  paste0("AA_results/distances_",name,"_" ,n_arc, "_", n, ".csv")
-      write.csv(large_df[[name]], file_name, row.names = FALSE,quote=FALSE)
-    }
+    arc_distances <- aggregate_distances(large_df$all)
+    file_name <-  paste0("AA_results/distances_" ,n_arc, "_", n, ".csv")
+    write.csv(arc_distances, file_name, row.names = FALSE,quote=FALSE)
+
+    #for (name in names(large_df)) {
+    #  file_name <-  paste0("AA_results/distances_",name,"_" ,n_arc, "_", n, ".csv")
+    #  write.csv(large_df[[name]], file_name, row.names = FALSE,quote=FALSE)
+    #}
   }
   ## Calc NMI HERE (return NMI)
 
@@ -189,15 +192,15 @@ for (n_arc in n_arc_values) {
     cluster_charA <- cluster_charA %>%
       mutate(across(where(is.list), ~ purrr::map(.x, as.list)))
 
-    file_name <-  paste0("LDA_results/cluster_char_After", n_arc, "_", n, ".csv")
-    write.csv(cluster_charA, file_name, row.names=FALSE, quote=FALSE)
+    file_name <-  paste0("LDA_results/cluster_char_After", n_arc, "_", n, ".json")
+    write_json(cluster_charA, file_name)
 
     cluster_charT <- cluster_analysis(umap_dbscan_gamma_proj, Xt, "AGE", "GENDER","cluster", "TrA") ## Set to Treatment
     cluster_charT <- cluster_charT %>%
       mutate(across(where(is.list), ~ purrr::map(.x, as.list)))
 
-    file_name <-  paste0("LDA_results/cluster_char_Treat", n_arc, "_", n, ".csv")
-    write.csv(cluster_charT, file_name, row.names=FALSE, quote=FALSE)
+    file_name <-  paste0("LDA_results/cluster_char_Treat", n_arc, "_", n, ".json")
+    write_json(cluster_charT, file_name)
 
     #######
 
@@ -225,7 +228,7 @@ for (n_arc in n_arc_values) {
     ##because it includes the start and end points of the bins.
 
     age_bins <- umap_dbscan_gamma_proj %>%
-      group_by(cluster, GENDER) %>%
+      group_by(cluster, GENDER,TARGET_COHORT) %>%
       summarise(
         age_bins = list(create_dynamic_bins(AGE)),
         .groups = 'drop'
@@ -266,91 +269,4 @@ write_json(results[[5]], json_file)
 
 json_file <- paste0("HDBScan_results/hdbscan_cluster_char_Age_bins", n_arc, "_", n, ".json")
 write_json(results[[6]], json_file)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###################
-
-# Assuming your data matrix is named 'data' and you have a target variable 'target'
-# data <- your_binary_data_matrix
-# target <- your_categorical_target_variable
-
-# Apply UMAP
-umap_result <- umap(data, n_neighbors = n_arc, n_components = 2)
-
-# Apply DBSCAN to the UMAP-reduced data
-dbscan_result <- dbscan(umap_result$layout, eps = 0.5, minPts = 5)
-
-# Save the cluster labels
-cluster_labels <- dbscan_result$cluster
-
-# Save the core points
-core_points <- dbscan_result$core_sample_indices
-
-# Save the noise points
-noise_points <- which(cluster_labels == 0)  # Assuming noise points are labeled as 0
-
-# Optionally, calculate and save the cluster centers
-calculate_cluster_centers <- function(data, labels) {
-  unique_labels <- unique(labels)
-  unique_labels <- unique_labels[unique_labels != 0]  # Exclude noise points
-  centers <- sapply(unique_labels, function(label) {
-    colMeans(data[labels == label, , drop = FALSE])
-  }, simplify = FALSE)
-  do.call(rbind, centers)
-}
-
-cluster_centers <- calculate_cluster_centers(umap_result$layout, cluster_labels)
-
-# Optionally, calculate and save the silhouette score
-if (length(unique(cluster_labels)) > 1) {
-  sil_result <- silhouette(cluster_labels, dist(umap_result$layout))
-  silhouette_score <- mean(sil_result[, "sil_width"])
-} else {
-  silhouette_score <- NA  # Silhouette score is not meaningful if there is only one cluster or all points are noise
-}
-
-# Calculate the number of samples in each cluster
-cluster_sizes <- table(cluster_labels)
-
-# Create a contingency table for the Chi-square test
-contingency_table <- table(cluster_labels, target)
-
-# Perform the Chi-square test
-chi_square_result <- chisq.test(contingency_table)
-
-# Save the results to a list
-dbscan_results <- list(
-  cluster_labels = cluster_labels,
-  core_points = core_points,
-  noise_points = noise_points,
-  cluster_centers = cluster_centers,
-  silhouette_score = silhouette_score,
-  cluster_sizes = cluster_sizes,
-  chi_square_result = chi_square_result
-)
-
-
-#############################################
-#SBM
 

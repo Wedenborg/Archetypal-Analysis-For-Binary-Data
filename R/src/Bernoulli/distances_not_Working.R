@@ -67,7 +67,10 @@ calculate_manhattan_distances <- function(X, Z, col_names,age_gender_df) {
 
       # Store the matrix in the list
       target_distances <- cbind(target_distances,X_target %>% select(GENDER))
+      target_distances <- cbind(target_distances,X_target %>% select(AGE))
+      target_distances <- cbind(target_distances,X_target %>% select(TARGET_COHORT))
       all_distances[[target]] <- target_distances
+
     }
 
     # Create a data frame to store all distances
@@ -105,3 +108,27 @@ calculate_manhattan_distances <- function(X, Z, col_names,age_gender_df) {
 # Assuming X, Z, and col_names are already defined
 # large_df <- calculate_manhattan_distances(X, Z, col_names,age_gender_df)
 # print(large_df)
+
+
+
+
+aggregate_distances <- function(data){
+
+  # Define age bins and labels
+  testing <- data %>%
+    mutate(age_group = case_when(
+      AGE < 30 ~ "under_30",
+      AGE >= 30 & AGE <= 60 ~ "between_30_and_60",
+      AGE > 60 ~ "over_60"
+    ))
+
+
+  # Aggregate data by gender and age group
+  aggregated_data <- testing %>%
+    group_by(target,GENDER, age_group,TARGET_COHORT) %>%
+    summarise(across(starts_with("dist"), mean, na.rm = TRUE),
+              .groups = 'drop')
+
+  return(as.data.frame(aggregated_data))
+
+}

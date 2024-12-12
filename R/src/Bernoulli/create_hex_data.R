@@ -65,10 +65,11 @@ create_hex_data <- function(X, S, Z,age_gender_df, relevant_features, num_bins =
       x = first(x_center),
       y = first(y_center),
       gender_max = names(which.max(table(GENDER))),  # Count each GENDER in the bin
+      cohort_max = names(which.max(table(TARGET_COHORT))),
       mean_age = round(mean(AGE, na.rm = TRUE),0),  # Mean age in the bin
-      sd_age = sd(AGE, na.rm = TRUE)  # Standard deviation of age in the bin
-    ) %>%
-    ungroup()
+      sd_age = sd(AGE, na.rm = TRUE),  # Standard deviation of age in the bin
+      .groups = 'drop'
+    )
 
 
   ## manually force entries with less than 5 to be 5 and set sd to 0.

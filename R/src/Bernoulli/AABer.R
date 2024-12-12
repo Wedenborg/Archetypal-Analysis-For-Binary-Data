@@ -1,3 +1,4 @@
+library(microbenchmark)
 
 
 fastnnls <- function(X, Xty, tol, b, PP, device = "cpu") {
@@ -13,6 +14,7 @@ fastnnls <- function(X, Xty, tol, b, PP, device = "cpu") {
     t = rep(0,nrow(X))
   } else {
     P <- rep(NA, n)
+    PP <- unlist(PP)
     P[PP] <- PP
 
     Z <- 1:n # Initialize the set of candidate indices.
@@ -45,7 +47,8 @@ fastnnls <- function(X, Xty, tol, b, PP, device = "cpu") {
   } else {
     XtX_PP <- t(X[, PP]) %*% X[, PP]
   }
-
+  #print(w[ZZ])
+  #print(length(w))
   while (length(ZZ) > 0 && sum(w[ZZ] > tol) > 0 && iterOuter < 1000) {
     iter <- 0
     temp <- w[ZZ]
@@ -70,6 +73,7 @@ fastnnls <- function(X, Xty, tol, b, PP, device = "cpu") {
     z[PP] <- solve(XtX_PP + lambda1 + diag(length(PP)) * lambda2, Xty[PP] + lambda1)
 
     while (sum(z[PP] <= tol) > 0 && iter < 500) {
+
       temp <- which(z[PP] <= tol)
       QQ <- PP[temp]
 
@@ -82,8 +86,10 @@ fastnnls <- function(X, Xty, tol, b, PP, device = "cpu") {
       t1 <- which(x[PP] < tol)
       ij <- PP[t1]
 
+
       idx_PP <- if (length(ij) == 0) rep(TRUE, length(PP)) else !PP %in% ij
       PP <- PP[idx_PP]
+
 
       ZZ <- c(ZZ, ij)
 
@@ -107,8 +113,8 @@ fastnnls <- function(X, Xty, tol, b, PP, device = "cpu") {
   }
 
   out <- z
-  #return(list(out = out, w = w, PP = PP))
-  return(out)
+  return(list(out = out, w = w, PP = PP))
+  #return(out)
 }
 
 # LossFunc function
@@ -130,6 +136,11 @@ SUpdate <- function(X, P, PC, S, SSt, n_arc, n_samples) {
 
   lS = LossFunc(X,PC,S)
 
+  eqstringQuadS <- 'ji,jk,jl->ikl'
+  eqstringLinS <- 'kl,ikl->il'
+  einsumQuadS <- einsum::einsum_generator(eqstringQuadS, compile_function = TRUE)
+  einsumLinS <- einsum::einsum_generator(eqstringLinS, compile_function = TRUE)
+
 
   for (j in seq(ncol(grid))) {
 
@@ -138,9 +149,9 @@ SUpdate <- function(X, P, PC, S, SSt, n_arc, n_samples) {
 
     K <- -t(PC[, grid[, j]]) %*% (X / (PC %*% S)) + t(PC[, grid[, j]]) %*% ((1 - X) / (1 - (PC %*% S)))
 
-    QuadS <- einsum::einsum('ji,jk,jl->ikl',PC[, grid[, j]],PC[, grid[, j]],X / ((PC %*% S) ^ 2) + (1 - X) / ((1 - (PC %*% S)) ^ 2))
+    QuadS <- einsumQuadS(PC[, grid[, j]],PC[, grid[, j]],X / ((PC %*% S) ^ 2) + (1 - X) / ((1 - (PC %*% S)) ^ 2))
 
-    linS <- K - 2*einsum::einsum('kl,ikl->il',S0,QuadS)
+    linS <- K - 2*einsumLinS(S0,QuadS)
 
 
     denominator <- 2 * SS[SS > tol] * (QuadS[1, 1, ] - QuadS[1, 2, ] - QuadS[2, 1, ] + QuadS[2, 2, ])[SS > tol]
@@ -171,15 +182,17 @@ CUpdate <- function(X, P, C, S, PC, n_arc, PPP) {
     v <- as.vector(((X / ((PC %*% S) ^ 2)+1e-6) %*% (S[i, ] ^ 2)) + (((1 - X) / ((1 - (PC %*% S)) ^ 2)+1e-6) %*% (S[i, ] ^ 2)))
     grad <- as.matrix(t(P) %*% ((X / (PC %*% S)+1e-6) %*% S[i, ]) - t(P) %*% (((1 - X) / (1 - PC %*% S)+1e-6) %*% S[i, ]))
 
-    xtilde <- P*sqrt(v)
+    xtilde <- as.matrix(P*sqrt(v))
 
-
-    Xty <- grad + t(xtilde) %*% (xtilde %*% C[, i])
+    Xty <- as.vector(grad + t(xtilde) %*% (xtilde %*% C[, i]))
+    #print(as.vector(Xty))
     tol <- 1e-9
+    #C_k <- fastnnls(xtilde, Xty, tol, C[, i], PPP[i]) # For future speed ups
     C_k <- fastnnls(xtilde, Xty, tol, C[, i], c())
 
-    C[, i] <- C_k
-    PC[, i] <- P %*% C_k
+    PPP[i] <- list(C_k$PP)
+    C[, i] <- C_k$out
+    PC[, i] <- P %*% C_k$out
   }
 
   lC = LossFunc(X,PC,S)
@@ -235,17 +248,25 @@ ClosedFormArchetypalAnalysis <- function(X, n_arc, maxIter = 500, convCriteria =
     S <- S_update$S
     SSt <- S_update$SSt
 
+
     # Update C
     C_update <- CUpdate(X, P, C, S, PC, n_arc, PPP)
     C <- C_update$C
     PC <- C_update$PC
     PPP <- C_update$PPP
 
+
     # Update loss
     loss <- LossFunc(X, PC, S)
+
     L <- c(L, loss)
     iter <- iter + 1
   }
 
   return(list(Z = X%*%C, S = S, L = L))
 }
+
+
+
+
+
