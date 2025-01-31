@@ -195,6 +195,7 @@ def ClosedFormArchetypalAnalysis(X,idxC,n_arc, method, base, maxIter = 500, conv
 
     Args:
         X (ndarray): Data matrix.
+        idxC (ndarray): Relevant indices for X to form the archetypes
         n_arc (int): Number of archetypes.
         method (str): Method for the loss function. Choose between 'Poisson' and 'Bernoulli'.
         base (str): Choose between 'numpy' and 'torch'.
