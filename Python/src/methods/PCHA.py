@@ -1,7 +1,18 @@
 """Principal Convex Hull Analysis (PCHA) / Archetypal Analysis."""
 
+# Modified from the original implementation by:
+# Authors: Morten Mørup, Technical University of Denmark (Matlab)
+# Converted to Python by: Ulf Aslak, Technical University of Denmark
+### Orginiated from the paper:
+# Mørup, Morten, and Lars Kai Hansen. "Archetypal analysis for machine learning and data mining.".
 
-#from matplotlib import axis
+# The original implementation can be found at:
+#  https://mortenmorup.dk/?page_id=2 
+# Orginal Python implementation:
+# https://github.com/ulfaslak/py_pcha (Ulf Aslak)
+
+
+# Note that this implementation has been modified significantly from the original implementation by a conversion to PyTorch and removing the furthest sum algorithm.
 
 import numpy as np
 from scipy.sparse import csr_matrix

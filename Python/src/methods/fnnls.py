@@ -49,8 +49,8 @@ def fastnnls(X,Xty,tol,b,PP,device='cpu'):
     iterOuter = 0
 
     scale = torch.mean(torch.sum(X*X,axis =1))
-    lambda1 = 1e9*scale
-    lambda2 = 1e-6*scale
+    lambda1 = 1e6*scale
+    lambda2 = 1e-3*scale
     t = X[:,PP]@x[PP]
     w = Xty +lambda1 - X.T@t - torch.sum(x)*lambda1 - lambda2*x # Compute the gradient of the objective function.
     iter = 0 
@@ -83,12 +83,12 @@ def fastnnls(X,Xty,tol,b,PP,device='cpu'):
             #XtX_PP = XtX_PP.append(X[:,PP].T@X[:,t],axis = 0)
 
             if len(PP[:-1]) == 1:
-                XtX_PP = torch.hstack((XtX_PP[0],X[:,t].T@X[:,PP[:-1]]))
+                XtX_PP = torch.hstack((XtX_PP[0],X[:,t]@X[:,PP[:-1]]))
                 XtX_PP = torch.vstack((XtX_PP,X[:,PP].T@X[:,t]))
 
             else:
 
-                XtX_PP = torch.hstack((XtX_PP,(X[:,t].T@X[:,PP[:-1]]).unsqueeze(1)))
+                XtX_PP = torch.hstack((XtX_PP,(X[:,t]@X[:,PP[:-1]]).unsqueeze(1)))
                 XtX_PP = torch.vstack((XtX_PP,X[:,PP].T@X[:,t]))
 
 

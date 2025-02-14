@@ -10,7 +10,7 @@ from src.methods.AALS import AALS
 
 
 
-def SUpdate(X,P,PC,S,SSt,n_arc,n_samples,method,base):
+def SUpdate(X,PC,S,SSt,n_arc,n_samples,device):
 
     """
     Update function for the S parameter in archetypal analysis.
@@ -33,9 +33,6 @@ def SUpdate(X,P,PC,S,SSt,n_arc,n_samples,method,base):
     
     """
 
-
-    device = torch.device("cpu")
-    b = torch
     alpha = torch.zeros(n_samples,dtype = torch.double, device = device)
 
     tol = 1e-12
@@ -51,23 +48,13 @@ def SUpdate(X,P,PC,S,SSt,n_arc,n_samples,method,base):
         SS = S[grid[j],:].sum(axis=0)
         S0 = S[grid[j],:]
 
-        if method == 'Poisson':
-            K =  - (PC[:,grid[j]]).T@(X/(PC@S)) + ((PC[:,grid[j]]).sum(axis=0)[:,None])
+        K =  -(PC[:,grid[j]]).T@(X/(PC@S)) + (PC[:,grid[j]]).T@((1-X)/(1-(PC@S)))
 
-            QuadS = torch.einsum('ji,jk,jl->ikl',(PC[:,grid[j]]),(PC[:,grid[j]]),X/((PC@S)**2)) 
+        QuadS = torch.einsum('ji,jk,jl->ikl',PC[:,grid[j]],PC[:,grid[j]],X/((PC@S)**2)+(1-X)/((1-(PC@S))**2))
         
-
-        elif method == 'Bernoulli':
-
-            K =  -(PC[:,grid[j]]).T@(X/(PC@S)) + (PC[:,grid[j]]).T@((1-X)/(1-(PC@S)))
-
-            QuadS = torch.einsum('ji,jk,jl->ikl',PC[:,grid[j]],PC[:,grid[j]],X/((PC@S)**2)+(1-X)/((1-(PC@S))**2))  #+ np.einsum('ji,jk,jl->ikl',PC[:,grid[j]],PC[:,grid[j]],(1-X)/((1-(PC@S))**2))
-        
-        else:
-            raise Exception('Error: method not recognized! \n Please choose between Poisson and Bernoulli')
-
         linS = K - 2*torch.einsum('kl,ikl->il',S0,QuadS)
-        
+    
+
         denominator = 2*SS[SS>tol]*(QuadS[0,0,:][SS>tol] - QuadS[0,1,:][SS>tol] - QuadS[1,0,:][SS>tol] + QuadS[1,1,:][SS>tol])
         nominator = SS[SS>tol] *(QuadS[0,1,:][SS>tol] + QuadS[1,0,:][SS>tol] - 2*QuadS[1,1,:][SS>tol]) + linS[0][SS>tol] - linS[1][SS>tol]
 
@@ -88,7 +75,7 @@ def SUpdate(X,P,PC,S,SSt,n_arc,n_samples,method,base):
     return S,SSt
 
 
-def CUpdate(X,P,C,S,PC,n_arc,PPP,method,base):
+def CUpdate(X,P,C,S,PC,n_arc,PPP,device):
 
     """
 
@@ -97,9 +84,8 @@ def CUpdate(X,P,C,S,PC,n_arc,PPP,method,base):
     This function updates the C parameter in archerypal analysis using fnnls and an active set strategy for faster convergence.
     This utilises the sparsity of the C matrix, as there are only few samples in each archetype.
 
-    The method if developed for bernoulli and Poisson distributed data, but can be extended to other distributions.
-    Both torch and numpy are supported, but the format needs to be specified in the base argument.
-
+    The method if developed for bernoulli data, but can be extended to other distributions.
+    
     Args:
         X (ndarray): Data matrix.
         P (ndarray): Numerically stable version of the data matrix. Implemented as P = X+eps-2*eps*X
@@ -107,27 +93,14 @@ def CUpdate(X,P,C,S,PC,n_arc,PPP,method,base):
         S (ndarray): Representation of the data in archetypal space.
         PC (ndarray): Matrix product of the P and C parameters.
         n_arc (int): Number of archetypes.
-        method (str): Method for the loss function. Choose between 'Poisson' and 'Bernoulli'.
-        base (str): Choose between 'numpy' and 'torch'. 
-    
+        PPP (list): List of active set indices.
     """
 
     for i in range(n_arc):
 
-        if method == 'Poisson':
-            v = (((X/((PC@S)**2))@(S[i,:]**2)))
+        v = ((X/((P@C@S)**2))@S[i,:]**2) + ((((1-X)/((1-(P@C@S))**2))@S[i,:]**2))
 
-            grad = P.T@((X/(PC@S))@S[i,:]) - P.sum(axis=0) * S[i,:].sum()
-
-
-        elif method == 'Bernoulli':
-            v = ((X/((P@C@S)**2))@S[i,:]**2) + ((((1-X)/((1-(P@C@S))**2))@S[i,:]**2))
-
-            grad = (P.T@((X/(P@C@S))@S[i,:]) -P.T@(((1-X)/(1-P@C@S))@S[i,:]))
-
-
-        else:
-            raise Exception('Error: method not recognized! \n Please choose between Poisson and Bernoulli')
+        grad = (P.T@((X/(P@C@S))@S[i,:]) -P.T@(((1-X)/(1-P@C@S))@S[i,:]))
 
         xtilde  = (P*torch.sqrt(v[:,None]))
         Xty =  grad + xtilde.T@(xtilde@C[:,i])
@@ -142,36 +115,26 @@ def CUpdate(X,P,C,S,PC,n_arc,PPP,method,base):
 
 
 
-def LossFunc(X,PC,S,method,base):
+def LossFunc(X,PC,S,device):
 
     """
     This function computes the loss function for archetypal analysis and returns the loss value.
 
-    The method if developed for bernoulli and Poisson distributed data, but can be extended to other distributions. 
-    Both torch and numpy are supported, but the format needs to be specified in the base argument.
-
+    The method if developed for bernoulli distributed data, but can be extended to other distributions. 
+   
     Args:
         X (ndarray): Data matrix.
         PC (ndarray): Matrix product of the P and C parameters.
         S (ndarray): Matrix of archetypes.
-        method (str): Method for the loss function. Choose between 'Poisson' and 'Bernoulli'.
-        base (str): Choose between 'numpy' and 'torch'.
+
 
     Returns:
         loss (float): Loss value.
 
     """
-    #eps = 1e-16
-    if method == 'Poisson':
-        loss = (-X*torch.log(PC@S)+ PC@S).sum().sum()
 
-    elif method == 'Bernoulli':
-
-        loss = torch.multiply(-X,torch.log(PC@S)).sum().sum() - torch.multiply((1-X),torch.log(1-(PC@S))).sum().sum() 
+    loss = torch.multiply(-X,torch.log(PC@S)).sum().sum() - torch.multiply((1-X),torch.log(1-(PC@S))).sum().sum() 
         
-    else:
-        raise Exception('Error: method not recognized! \n Please choose between Poisson and Bernoulli')
-    
 
     loss = loss.item()
 
@@ -179,7 +142,7 @@ def LossFunc(X,PC,S,method,base):
     return loss
 
 
-def ClosedFormArchetypalAnalysis(X,idxC,n_arc, method, base, maxIter = 500, convCriteria = 1e-6,  C = None, S = None,init = False):
+def Bernoulli_Archetypal_Analysis(X,n_arc, maxIter = 500, convCriteria = 1e-6,  C = None, S = None,init = False):
 
     """
     An iterative update function for archetypal analysis. 
@@ -197,8 +160,6 @@ def ClosedFormArchetypalAnalysis(X,idxC,n_arc, method, base, maxIter = 500, conv
         X (ndarray): Data matrix.
         idxC (ndarray): Relevant indices for X to form the archetypes
         n_arc (int): Number of archetypes.
-        method (str): Method for the loss function. Choose between 'Poisson' and 'Bernoulli'.
-        base (str): Choose between 'numpy' and 'torch'.
         maxIter (int): Maximum number of iterations.
         convCriteria (float): Convergence criteria for the stopping criterion.
         C (ndarray): Initial guess for the C parameter.
@@ -212,12 +173,12 @@ def ClosedFormArchetypalAnalysis(X,idxC,n_arc, method, base, maxIter = 500, conv
     
     """
 
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     eps = 1e-3
-    n_features, n_samples = X.shape
-    n_samplesA = len(idxC)
-    P = X[:,idxC]+eps-2*eps*X[:,idxC]
+    _ , n_samples = X.shape
+
+    P = X+eps-2*eps*X
     P = P.to(device)
 
     iter = 0 
@@ -228,7 +189,7 @@ def ClosedFormArchetypalAnalysis(X,idxC,n_arc, method, base, maxIter = 500, conv
     if C is None:
 
 
-        C =torch.abs(torch.log(torch.rand(n_samplesA,n_arc,dtype=torch.double, device = device)))
+        C =torch.abs(torch.log(torch.rand(n_samples,n_arc,dtype=torch.double, device = device)))
         C = C / C.sum(axis=0)[None,:]
         
     if S is None:
@@ -250,14 +211,14 @@ def ClosedFormArchetypalAnalysis(X,idxC,n_arc, method, base, maxIter = 500, conv
         lossOld = loss
 
         # Update S
-        S,SSt = SUpdate(X,P,PC,S,SSt,n_arc,n_samples,method,base)
+        S,SSt = SUpdate(X,PC,S,SSt,n_arc,n_samples,device)
 
         # Update C
-        C, PC,PPP = CUpdate(X,P,C,S,PC,n_arc,PPP,method,base) 
+        C, PC,PPP = CUpdate(X,P,C,S,PC,n_arc,PPP,device) 
 
         # Update loss
 
-        loss = LossFunc(X,PC,S,method,base)
+        loss = LossFunc(X,PC,S,device)
 
 
         L.append(loss)

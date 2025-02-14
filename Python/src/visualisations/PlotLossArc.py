@@ -16,7 +16,7 @@ def plot_loss_arc(L,n_arc_list,i,color,model, dataset, savedir = None):
 
     ax.set_xticks(n_arc_list,fontsize=25)
     ax.set_xlabel('Number of Archetypes',fontsize=30)
-    ax.set_ylabel('Loss',fontsize=20)
+    ax.set_ylabel('Loss',fontsize=30)
 
     plt.legend(fontsize=30)
 

@@ -134,9 +134,9 @@ def C_updateTorch(X,C,S,SSt,XC,CtXtXC,n_arc,PP,device='cpu'):
 ## AA function!!
 
 
-def AALS(X,n_samples,n_arc,C=None,S=None,gridS = False,maxIter = 1000,device='cpu'):
+def AALS(X,n_arc,C=None,S=None,gridS = False,maxIter = 1000,device='cpu'):
 
-
+    _ , n_samples = X.shape
     if C is None:
         C =torch.log(torch.rand(n_samples,n_arc,dtype=torch.double,device=device,requires_grad=False))
         C[torch.abs(C)<0.5] = 0
