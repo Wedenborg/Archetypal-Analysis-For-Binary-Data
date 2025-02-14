@@ -8,7 +8,8 @@ Archetypal analysis (AA) is a matrix decomposition method that identifies distin
 *Important!:* R is still not fully supported! Please use the python code instead!
 
 The example notebook will take you through a small example with synthetic data for both Bernoulli and Gaussian data 
-## :folder: File Structure
+## :file_folder: File Structure
+```
 .
 ├── src
 │   ├── methods
@@ -27,7 +28,7 @@ The example notebook will take you through a small example with synthetic data f
 │       └── PlotNMIStability.py
 ├── ExampleNB.ipynb
 └── README.md
-
+```
 ## :star2: Credit/Acknowledgment
 This work is authored by Anna Emilie J. Wedenborg and Morten Mørup.
 
